@@ -1,0 +1,4 @@
+ + throw actual errors (CommandError, ArgumentError)
+ + fix checking for if default is integer or float (mostly allow you to override it with type parameter)
+ + fix wrapping
+ + fix tests for help message
