@@ -3,7 +3,7 @@ trollopjs
 
 [Trollop](http://trollop.rubyforge.org) is a command line option parser for Ruby.
 
-trollopjs is a port of that to work with the Node library.
+`trollopjs` is a port of that to work with the [Node javascript library](http://nodejs.org/).
 
 Almost everything is working except for the formatting of the help message.
 Read about the differences below.
@@ -32,10 +32,10 @@ QUICK EXAMPLE
     var trollopjs = require('trollopjs');
 
     var opts = trollopjs.options(function() {
-      this.opt('monkey', "Use monkey mode");                     // a flag --monkey, defaulting to false
-      this.opt('goat', "Use goat mode", {dflt: true});           // a flag --goat, defaulting to true
-      this.opt('num_limbs', "Number of limbs", {dflt: 4});       // an integer --num-limbs <i>, defaulting to 4
-      this.opt('num_thumbs', "Number of thumbs", {type: 'int'}); // an integer --num-thumbs <i>, defaulting to nil
+      this.opt('monkey', "Use monkey mode");                       // a flag --monkey, defaulting to false
+      this.opt('goat', "Use goat mode", {dflt: true});             // a flag --goat, defaulting to true
+      this.opt('num_limbs', "Number of limbs", {dflt: 4});         // an integer --num-limbs <i>, defaulting to 4
+      this.opt('num_thumbs', "Number of thumbs", {type: 'int'});   // an integer --num-thumbs <i>, defaulting to nil
     });
 
     var sys = require('sys');
@@ -53,6 +53,11 @@ INSTALLING/RUNNING
 ------------------
 
 Checkout out the code and make sure it is in your [node path](http://nodejs.org/api.html#_modules).
+
+The easiest way to get it running is to check it out into  `~/.node_libraries`:
+
+    mkdir -p ~/.node_libraries
+    git clone git://github.com/bentomas/trollopjs.git ~/.node_libraries/trollopjs
 
 Run a file with the following command:
 
