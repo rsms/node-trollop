@@ -619,7 +619,7 @@ Parser.prototype.educate = function(_stream) {
     sys.print("  " + left[opt]); //TODO: justify this text
     var desc = spec.desc;
 
-    if( spec.dflt.constructor == Array) {
+    if( !(typeof spec.dflt == 'undefined') && spec.dflt.constructor == Array) {
       var default_s = spec.dflt.join(', ');
     }
     else {
@@ -866,7 +866,9 @@ exports.options = function() {
   try {
     vals = this.p.parse(argv);
     argv.splice(0,argv.length);
-    this.p.leftovers.forEach(function(l) { args.push(l); });
+    this.p.leftovers.forEach(function(l) {
+        argv.push(l);
+      });
     return vals;
   }
   catch(err) {
