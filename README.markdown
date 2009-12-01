@@ -1,4 +1,5 @@
-== trollopjs
+trollopjs
+=========
 
 [Trollop](http://trollop.rubyforge.org) is a commandline option parser for Ruby.
 
@@ -7,14 +8,16 @@ trollopjs is a port of that to work with the Node library.
 Almost everything is working except for the formatting of the help message.
 View the differences before.
 
-== DESCRIPTION
+DESCRIPTION
+-----------
 
 trollopjs is a commandline option parser for Node that just gets out of your
 way. One line of code per option is all you need to write. For that, you get a
 nice automatically-generated help page, robust option parsing, command
 subcompletion, and sensible defaults for everything you don't specify.
 
-== DOCUMENTATION/QUICK START
+DOCUMENTATION/QUICK START
+-------------------------
 
 I have no documentation.  But if you are curious you can consult the Ruby docs
 for the original Trollop:
@@ -23,7 +26,8 @@ for the original Trollop:
 
 Or you can checkout the files in the examples dir.
 
-== QUICK EXAMPLE
+QUICK EXAMPLE
+-------------
 
     var trollopjs = require('trollopjs');
 
@@ -45,7 +49,8 @@ Or you can checkout the files in the examples dir.
     }
     */
 
-== INSTALLING/RUNNING
+INSTALLING/RUNNING
+------------------
 
 Checkout out the code and make sure it is in your [node path](http://nodejs.org/api.html#_modules).
 
@@ -62,7 +67,10 @@ follow it up with `--` you won't run into any problems:
 
     node -- filename.js --help
 
-== FEATURES/PROBLEMS
+FEATURES/PROBLEMS
+-----------------
+
+(taken from the Trollop README)
 
 - Dirt-simple usage.
 - Sensible defaults. No tweaking necessary, much tweaking possible.
@@ -72,11 +80,9 @@ follow it up with `--` you won't run into any problems:
 - Automatic help message generation, wrapped to current screen width.
 - Lots of unit tests.
 
-== REQUIREMENTS
 
-* A burning desire to write less code.
-
-== DIFFERENCES FROM THE RUBY TROLLOP
+DIFFERENCES FROM THE RUBY TROLLOP
+---------------------------------
 
 The Ruby Trollop has an IO type.   At this time there isn't a good mapping for that
 in Node, so I removed it.
@@ -85,14 +91,16 @@ in Node, so I removed it.
 
 I haven't implemented the Trollop::die function.
 
-== LICENSE
+LICENSE
+-------
 
 trollopjs is distributed under the same terms as Trollop:
 
 Copyright (c) 2008--2009 William Morgan. Trollop is distributed under the same
 terms as Ruby.
 
-== ABOUT THE RUBY TROLLOP
+ABOUT THE RUBY TROLLOP
+----------------------
 
 Trollop is origonally by William Morgan (http://masanjin.net/)
 
