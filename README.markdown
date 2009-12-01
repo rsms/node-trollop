@@ -1,12 +1,12 @@
 trollopjs
 =========
 
-[Trollop](http://trollop.rubyforge.org) is a commandline option parser for Ruby.
+[Trollop](http://trollop.rubyforge.org) is a command line option parser for Ruby.
 
 trollopjs is a port of that to work with the Node library.
 
 Almost everything is working except for the formatting of the help message.
-View the differences before.
+Read about the differences below.
 
 DESCRIPTION
 -----------
@@ -87,7 +87,7 @@ DIFFERENCES FROM THE RUBY TROLLOP
 The Ruby Trollop has an IO type.   At this time there isn't a good mapping for that
 in Node, so I removed it.
 
-'default' is a keyword in javascript, so the option has been renamed 'dflt'.
+`default` is a keyword in javascript, so the option has been renamed `dflt`.
 
 I haven't implemented the Trollop::die function.
 
