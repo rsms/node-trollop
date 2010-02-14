@@ -4,7 +4,6 @@
 // License::   GNU GPL version 2
 
 var sys = require('sys');
-var underscore = require('./dependencies/underscore')['_'];
 
 const VERSION = "1.15";
 
@@ -48,6 +47,17 @@ const TYPES = [].concat(FLAG_TYPES, SINGLE_ARG_TYPES, MULTI_ARG_TYPES);
 
 const INVALID_SHORT_ARG_REGEX = /[\d-]/
 
+function _flatten(arr) {
+	var fun = function(memo, value) {
+		if (Array.isArray(value))
+			value.reduce(fun, memo);
+		else
+			memo.push(value);
+		return memo;
+	};
+	return arr.reduce(fun, []);
+}
+
 // The commandline parser. In typical usage, the methods in this class
 // will be handled internally by Trollop:'options'. In this case, only the
 // #opt, #banner and #version, #depends, and #conflicts methods will
@@ -70,7 +80,21 @@ var Parser = exports.Parser = function() {
   if( arguments.length > 0 && arguments[0].length > 0 ) {
     var args =  arguments[0];
     var func = args.pop();
-    func.apply(this,args);
+    if (typeof func === 'function') {
+      func.apply(this,args);
+    }
+    else if (Array.isArray(func)) {
+      var self = this;
+      func.forEach(function(spec){
+        if (Array.isArray(spec))
+          Parser.prototype.opt.apply(self, spec);
+        else
+          self.banner(spec);
+      });
+    }
+    else {
+      throw new Error('invalid argument type ('+(typeof func)+') for first arg');
+    }
   }
 };
 
@@ -114,23 +138,11 @@ var Parser = exports.Parser = function() {
 // If you want a multi-value, multi-occurrence argument with a default
 // value, you must specify +:type+ as well.
 Parser.prototype.opt = function(name, _desc, _opts) {
-  if( typeof _desc == 'undefined' ) {
-    var desc = "";
-  }
-  else {
-    var desc = _desc;
-  }
-
-  if( typeof _opts == 'undefined' ) {
-    var opts = {};
-  }
-  else {
-    var opts = _opts;
-  }
+  var desc = _desc || "";
+  var opts = _opts || {};
   
-  if( name in this.specs ) {
-    throw "You already have an argument named '" + name + "'";
-  }
+  if( name in this.specs )
+    throw new Error("You already have an argument named '" + name + "'");
 
   // fill in :type
   if( 'type' in opts ) {
@@ -154,8 +166,8 @@ Parser.prototype.opt = function(name, _desc, _opts) {
         opts.type = 'floats';
         break;
       default:
-        if(!underscore.include(TYPES, opts.type)) {
-          throw "unsupported argument type '"+opts.type+"'";
+        if(TYPES.indexOf(opts.type) === -1) {
+          throw new Error("unsupported argument type '"+opts.type+"'");
         }
       }
     }
@@ -172,7 +184,7 @@ Parser.prototype.opt = function(name, _desc, _opts) {
       opts.type = "date";
     }
     else {
-      throw "unsupported argument type '"+opts.type+"'";
+      throw new Error("unsupported argument type '"+opts.type+"'");
     }
   }
   else {
@@ -183,11 +195,11 @@ Parser.prototype.opt = function(name, _desc, _opts) {
   // a multi-valued argument. for that you have to specify a :type
   // as well. (this is how we disambiguate an ambiguous situation;
   // see the docs for Parser#opt for details.)
-  if( opts.multi && opts.dflt && opts.dflt.constructor == Array && !opts.type) {
-    var disambiguated_default = opts.dflt[0];
+  if( opts.multi && opts.def && opts.def.constructor == Array && !opts.type) {
+    var disambiguated_default = opts.def[0];
   }
   else {
-    var disambiguated_default = opts.dflt;
+    var disambiguated_default = opts.def;
   }
 
   if( typeof disambiguated_default == 'undefined' || disambiguated_default === null  ) {
@@ -211,34 +223,34 @@ Parser.prototype.opt = function(name, _desc, _opts) {
     var type_from_default = 'date';
   }
   else if( disambiguated_default.constructor == Array ) {
-    if( opts.dflt.length < 1 ) {
-      throw "multiple argument type cannot be deduced from an empty Array";
+    if( opts.def.length < 1 ) {
+      throw new Error("multiple argument type cannot be deduced from an empty Array");
     }
 
-    if( opts.dflt[0] && opts.dflt[0].constructor == Number ) {
-      if( (opts.dflt[0]+'').match(/^[0-9]+$/) ) {
+    if( opts.def[0] && opts.def[0].constructor == Number ) {
+      if( (opts.def[0]+'').match(/^[0-9]+$/) ) {
         var type_from_default = 'ints';
       }
       else {
         var type_from_default = 'floats';
       }
     }
-    else if( opts.dflt[0].constructor == String ) {
+    else if( opts.def[0].constructor == String ) {
       var type_from_default = 'strings';
     }
-    else if( opts.dflt[0].constructor == Date ) {
+    else if( opts.def[0].constructor == Date ) {
       var type_from_default = 'dates';
     }
     else {
-      throw "unsupported multiple argument type";
+      throw new Error("unsupported multiple argument type");
     }
   }
   else {
-    throw "unsupported argument type";
+    throw new Error("unsupported argument type");
   }
 
   if(opts.type && type_from_default && opts.type != type_from_default) {
-    throw "type specification and default type don't match (default type is "+type_from_default+")";
+    throw new Error("type specification and default type don't match (default type is "+type_from_default+")");
   }
 
   opts.type = opts.type || type_from_default || 'flag';
@@ -256,11 +268,11 @@ Parser.prototype.opt = function(name, _desc, _opts) {
     opts.long = opts.long;
   }
   else {
-    throw "invalid long option name " + opts.long;
+    throw new Error("invalid long option name " + opts.long);
   }
 
   if(opts.long in this.long) {
-    throw "long option name "+opts.long+" is already taken; please specify a (different) long";
+    throw new Error("long option name "+opts.long+" is already taken; please specify a (different) long");
   }
 
   // fill in :short
@@ -271,26 +283,26 @@ Parser.prototype.opt = function(name, _desc, _opts) {
     opts.short = m[1];
   }
   else {
-    throw "invalid short option name '" + opts.short + "'";
+    throw new Error("invalid short option name '" + opts.short + "'");
   }
 
   if(opts.short) {
     if(this.short[opts.short]) {
-      throw "short option name " + opts.short +" is already taken; please specify a (different) short";
+      throw new Error("short option name " + opts.short +" is already taken; please specify a (different) short");
     }
     if(opts.short.match(INVALID_SHORT_ARG_REGEX)) {
-      throw "a short option name can't be a number or a dash";
+      throw new Error("a short option name can't be a number or a dash");
     }
   }
 
   // fill in :default for flags
-  if( opts.type == 'flag' && !opts.dflt ) {
-    opts.dflt = false;
+  if( opts.type == 'flag' && !opts.def ) {
+    opts.def = false;
   }
 
   // autobox :default for :multi (multi-occurrence) arguments
-  if(opts.dflt && opts.multi && opts.dflt.constructor != Array) {
-    opts.dflt = [opts.dflt];
+  if(opts.def && opts.multi && Array.isArray(opts.def)) {
+    opts.def = [opts.def];
   }
 
   // fill in :multi
@@ -333,7 +345,7 @@ Parser.prototype.depends = function() {
   var syms = Array.prototype.slice.call(arguments);
   syms.forEach(function(sym) {
       if( !this.specs[sym] ) {
-        throw "unknown option '"+sym+"'";
+        throw new Error("unknown option '"+sym+"'");
       }
     },this);
   this.constraints.push(['depends', syms]);
@@ -344,7 +356,7 @@ Parser.prototype.conflicts = function() {
   var syms = Array.prototype.slice.call(arguments);
   syms.forEach(function(sym) {
       if( !this.specs[sym] ) {
-        throw "unknown option '"+sym+"'";
+        throw new Error("unknown option '"+sym+"'");
       }
     },this);
   this.constraints.push(['conflicts', syms]);
@@ -360,7 +372,7 @@ Parser.prototype.conflicts = function() {
 // invocation would then be used to parse subcommand options, after
 // shifting the subcommand off of ARGV.
 Parser.prototype.stop_on = function() {
-  this.stop_words = underscore.flatten(Array.prototype.slice.call(arguments));
+  this.stop_words = _flatten(Array.prototype.slice.call(arguments));
 };
 
 // Similar to #stop_on, but stops on any unknown word when encountered
@@ -394,8 +406,8 @@ Parser.prototype.parse = function(_cmdline) {
     if(opts.required) {
       required[sym] = true;
     }
-    vals[sym] = opts.dflt;
-    if(opts.multi && !opts.dflt) { // multi arguments default to [], not nil
+    vals[sym] = opts.def;
+    if(opts.multi && !opts.def) { // multi arguments default to [], not nil
       vals[sym] = [];
     }
   }
@@ -412,15 +424,15 @@ Parser.prototype.parse = function(_cmdline) {
       var sym = this.long[m[1]];
     }
     else {
-      throw "invalid argument syntax: '" + arg + "'";
+      throw new Error("invalid argument syntax: '" + arg + "'");
     }
 
     if( typeof sym == 'undefined' ) {
-      throw "unknown argument '" + arg + "'";
+      throw new Error("unknown argument '" + arg + "'");
     }
 
     if(sym in given_args && !this.specs[sym].multi) {
-      throw "option '" + arg + "' specified multiple times";
+      throw new Error("option '" + arg + "' specified multiple times");
     }
 
     given_args[sym] = given_args[sym] || {};
@@ -432,11 +444,11 @@ Parser.prototype.parse = function(_cmdline) {
     var num_params_taken = 0
 
     if(params) {
-      if( underscore.include(SINGLE_ARG_TYPES, this.specs[sym].type) ) {
+      if(SINGLE_ARG_TYPES.indexOf(this.specs[sym].type) !== -1) {
         given_args[sym].params.push([params.shift()]); // take the first parameter
         num_params_taken = 1;
       }
-      else if( underscore.include(MULTI_ARG_TYPES, this.specs[sym].type) ) {
+      else if(MULTI_ARG_TYPES.indexOf(this.specs[sym].type) !== -1) {
         given_args[sym].params.push(params) // take all the parameters
         num_params_taken = params.length;
       }
@@ -458,7 +470,13 @@ Parser.prototype.parse = function(_cmdline) {
     var type = tuple[0];
     var syms = tuple[1];
 
-    constraint_sym = underscore.detect(syms, function(sym) { return given_args[sym] } );
+    //_detect(syms, function(sym) { return given_args[sym] } );
+    for (var k in syms) {
+      constraint_sym = given_args[syms[k]];
+      if (constraint_sym)
+        break;
+    }
+
     if(!constraint_sym) {
       return;
     }
@@ -467,14 +485,14 @@ Parser.prototype.parse = function(_cmdline) {
     case 'depends':
       syms.forEach( function(sym) {
           if( !(sym in given_args) ) {
-            throw "--" + this.specs[constraint_sym].long +" requires --"+ this.specs[sym].long;
+            throw new Error("--" + this.specs[constraint_sym].long +" requires --"+ this.specs[sym].long);
           }
         },this);
       break;
     case 'conflicts':
       syms.forEach( function(sym) {
           if( sym in given_args && (sym != constraint_sym) ) {
-            throw "--" + this.specs[constraint_sym].long +" conflicts with --"+ this.specs[sym].long;
+            throw new Error("--" + this.specs[constraint_sym].long +" conflicts with --"+ this.specs[sym].long);
           }
         },this);
       break;
@@ -484,7 +502,7 @@ Parser.prototype.parse = function(_cmdline) {
   for( var sym in required) {
     var val = required[sym];
     if( !(sym in given_args) ) {
-      throw "option '" + sym + "' must be specified";
+      throw new Error("option '" + sym + "' must be specified");
     }
   }
 
@@ -493,10 +511,13 @@ Parser.prototype.parse = function(_cmdline) {
     var given_data = given_args[sym];
     var arg = given_data.arg;
     var params = given_data.params;
+    var mapparams = function(fun){
+      return params.map(function(pg) { return pg.map(fun); });
+    }
 
     opts = this.specs[sym]
     if(params.length < 1 && opts.type != 'flag') {
-      throw "option '"+arg+"' needs a parameter";
+      throw new Error("option '"+arg+"' needs a parameter");
     }
 
     vals[sym+'_given'] = true; // mark argument as specified on the commandline
@@ -504,35 +525,35 @@ Parser.prototype.parse = function(_cmdline) {
     var selfScoper = this;
     switch( opts.type) {
     case 'flag':
-      vals[sym] = !opts.dflt;
+      vals[sym] = !opts.def;
       break;
     case 'int':
     case 'ints':
-      vals[sym] = underscore.map(params, function(pg) { return underscore.map(pg, function(p) { return selfScoper._parse_integer_parameter(p, arg); }); });
+      vals[sym] = mapparams(function(p){ return selfScoper._parse_integer_parameter(p, arg); });
       break;
     case 'float':
     case 'floats':
-      vals[sym] = underscore.map(params, function(pg) { return underscore.map(pg, function(p) { return selfScoper._parse_float_parameter(p, arg); }); });
+      vals[sym] = mapparams(function(p) { return selfScoper._parse_float_parameter(p, arg); });
       break;
     case 'string':
     case 'strings':
-      vals[sym] = underscore.map(params, function(pg) { return underscore.map(pg, function(p) { return p+''; }); });
+      vals[sym] = mapparams(function(p) { return p+''; });
       break;
     case 'date':
     case 'dates':
-      vals[sym] = underscore.map(params, function(pg) { return underscore.map(pg, function(p) { return selfScoper._parse_date_parameter(p, arg); }); });
+      vals[sym] = mapparams(function(p) { return selfScoper._parse_date_parameter(p, arg); });
       break;
     }
 
-    if(underscore.include(SINGLE_ARG_TYPES, opts.type) ) {
+    if(SINGLE_ARG_TYPES.indexOf(opts.type) !== -1) {
       if(!opts.multi) { // single parameter
         vals[sym] = vals[sym][0][0];
       }
       else { // multiple options, each with a single parameter
-        vals[sym] = underscore.map(vals[sym], function(p) { return p[0]; });
+        vals[sym] = vals[sym].map(function(p){ return p[0]; });
       }
     }
-    else if( underscore.include(MULTI_ARG_TYPES, opts.type) && !opts.multi ) {
+    else if(MULTI_ARG_TYPES.indexOf(opts.type) !== -1 && !opts.multi ) {
       vals[sym] = vals[sym][0]  // single option, with multiple parameters
     }
     // else: multiple options, with multiple parameters
@@ -596,37 +617,36 @@ Parser.prototype.educate = function(_stream) {
     }
   }
 
-  var leftcol_width = underscore(left).chain().values().pluck('length').max().value();
+  var leftcol_width = Object.keys(left).map(function(k){return left[k].length}).reduce(function(a,b){return Math.max(a,b)}, 0);
   var rightcol_start = leftcol_width + 6; // spaces
+  var indent = "  ";
 
   if( !(this.order.length > 0 && this.order[0][0] == 'text') ) {
     if(this._version) {
-      sys.puts(this._version+"\n");
+      sys.error(this._version);
     }
-    sys.puts("Options:");
+    sys.error("Options:");
   }
 
   this.order.forEach(function(ordering) {
     var what = ordering[0];
     var opt = ordering[1];
 
-    if(what == 'text') {
-      sys.puts(this.wrap(opt)+"\n");
+    if(what === 'text') {
+      sys.error(this.wrap(opt));
       return;
     }
 
     var spec = this.specs[opt];
-    sys.print("  " + left[opt]); //TODO: justify this text
+    process.stdio.writeError(indent + left[opt]); //TODO: justify this text
     var desc = spec.desc;
 
-    if( !(typeof spec.dflt == 'undefined') && spec.dflt.constructor == Array) {
-      var default_s = spec.dflt.join(', ');
-    }
-    else {
-      var default_s = spec.dflt +'';
-    }
+    if (Array.isArray(spec.def))
+      var default_s = spec.def.join(', ');
+    else
+      var default_s = spec.def +'';
 
-    if(spec.dflt) {
+    if(spec.def) {
         if(spec.desc.match(/\.$/)) {
           desc += " (Default: "+default_s+")";
         }
@@ -635,7 +655,11 @@ Parser.prototype.educate = function(_stream) {
         }
     }
 
-    sys.puts(this.wrap(desc, {width: this.width() - rightcol_start - 1, prefix: rightcol_start}));
+    sys.error(this.wrap(desc, {
+      width: this.width() - rightcol_start - 1,
+      prefix: rightcol_start,
+      leftoffs: rightcol_start-(left[opt].length+indent.length),
+    }));
   },this);
 }
 
@@ -644,85 +668,60 @@ Parser.prototype.width = function() {
 }
 
 Parser.prototype.wrap = function(str, _opts) {
-  if( typeof _opts == 'undefined' ) {
-    var opts = {};
-  }
-  else {
-    var opts = _opts;
-  }
-
-  if(str == "") {
-    var ret = "";
-  }
-  else {
+  var opts = _opts || {};
+  if (str && str.length) {
     var self = this;
-    var ret = underscore(str.split("\n")).chain().map(function(s) {
-        return self._wrap_line(s, opts);
-        }).flatten().value().join("\n");
+    var lines = str.split("\n");
+    lines = lines.map(function(line){
+      return self.padStr(" ",opts.leftoffs) + self._wrap_line(line, opts).join("\n");
+    });
+    lines = lines.join("\n");
+    return lines;
   }
-
-  return ret;
+  return "";
 }
 
 Parser.prototype._wrap_line = function(str, _opts) {
-  if( typeof _opts == 'undefined' ) {
-    var opts = {};
-  }
-  else {
-    var opts = _opts;
-  }
-
+  var opts = _opts || {};
   var prefix = opts.prefix || 0;
   var width = opts.width || (this.width() - 1);
   var start = 0;
   var ret = [];
-  while( start <= str.length ) {
-    if((start + width) >= str.length) {
-      var nextt = str.length;
+  while (str.length) {
+    var hunk;
+    if (str.length > width) {
+      hunk = str.substr(start, width);
+      str = str.substr(width);
     }
     else {
-      var x = width;
-      /*
-      x = str.search(/\s[^\s]$/);  //need to come of with an rindex
-      if( x && x < start ) {
-        x = str.search(/\s/, start)
-      }
-      */
-      var nextt = x || str.length;
+      hunk = str;
     }
-    ret.push((ret.length < 1 ? "" : this.padStr(" ",prefix)) + '' + str.substring(start, nextt));
-    start = nextt + 1;
+    ret.push((ret.length ? this.padStr(" ",prefix) : '') + hunk);
+    if (hunk === str)
+      break;
   }
+  //sys.p(ret);
   return ret;
 };
 
-Parser.prototype.padStr = function(str, num, _padding) {
-  if( typeof _padding == 'undefined') {
-    var padding = ' ';
-  }
-  else {
-    var padding = _padding;
-  }
-
-  var ret = str;
-  while(ret.length < num) {
-    ret = _padding+ret;
-  }
-
-  return ret.substring(0, num);
+Parser.prototype.padStr = function(str, num) {
+  var ret = '';
+  while(ret.length < num)
+    ret += ' ';
+  return ret;
 }
 
 
 Parser.prototype._parse_integer_parameter = function(param, arg) {
   if( !param.match(/^\d+$/) ) {
-    throw "option '"+arg +"' needs an integer";
+    throw new Error("option '"+arg +"' needs an integer");
   }
   return parseInt(param);
 };
 
 Parser.prototype._parse_float_parameter = function(param, arg) {
   if(!param.match(FLOAT_RE)) {
-    throw "option '"+arg+"' needs a floating-point number";
+    throw new Error("option '"+arg+"' needs a floating-point number");
   }
   return parseFloat(param);
 };
@@ -730,7 +729,7 @@ Parser.prototype._parse_float_parameter = function(param, arg) {
 Parser.prototype._parse_date_parameter = function(param, arg) {
   var parsed = Date.parse(param);
   if(isNaN(parsed)) { 
-    throw "option '"+arg+"' needs a date";
+    throw new Error("option '"+arg+"' needs a date");
   }
   else {
     return  parsed
@@ -769,7 +768,7 @@ Parser.prototype._resolve_default_short_options = function() {
 Parser.prototype._collect_argument_parameters = function(args, start_at) {
   var params = []
   var pos = start_at
-  while(args[pos] && !args[pos].match(PARAM_RE) && !underscore.include(this.stop_words, args[pos])) {
+  while(args[pos] && !args[pos].match(PARAM_RE) && this.stop_words.indexOf(args[pos]) === -1) {
     params.push(args[pos]);
     pos++;
   }
@@ -781,7 +780,7 @@ Parser.prototype._each_arg = function(args, callback) {
   var i = 0;
 
   while (i < args.length) {
-    if(underscore.include(this.stop_words, args[i])) {
+    if(this.stop_words.indexOf(args[i]) !== -1) {
       return remains.concat(args.slice(i)); 
     }
 
@@ -854,13 +853,8 @@ Parser.prototype._each_arg = function(args, callback) {
 };
 
 exports.options = function() {
-  var args =  Array.prototype.slice.call(arguments);
-  if(args.length > 1) {
-    var argv = args.shift();
-  }
-  else {
-    var argv = process.ARGV;
-  }
+  var args = Array.prototype.slice.call(arguments);
+  var argv = (args.length > 1) ? args.shift() : process.ARGV;
   this.p = new Parser(args);
 
   try {
@@ -874,15 +868,15 @@ exports.options = function() {
   catch(err) {
     if( err == HelpNeeded ) {
       this.p.educate();
-      process.exit(0);
+      process.exit(1);
     }
     else if( err == VersionNeeded ) {
-      sys.puts(this.p._version);
+      sys.error(this.p._version);
       process.exit(0);
     }
     else {
-      sys.puts(err.message);
-      sys.puts(err.stack);
+      sys.error(err);
+      process.exit(1);
     }
     /*
     CommandlineError => e
