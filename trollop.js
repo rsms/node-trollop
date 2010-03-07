@@ -79,11 +79,14 @@ var Parser = exports.Parser = function() {
 
   if( arguments.length > 0 && arguments[0].length > 0 ) {
     var args =  arguments[0];
+    var didSomething = false;
     var func = args.pop();
     if (typeof func === 'function') {
       func.apply(this,args);
+      didSomething = true;
     }
-    else if (Array.isArray(func)) {
+    var func = args.pop();
+    if (Array.isArray(func)) {
       var self = this;
       func.forEach(function(spec){
         if (Array.isArray(spec))
@@ -91,8 +94,9 @@ var Parser = exports.Parser = function() {
         else
           self.banner(spec);
       });
+      didSomething = true;
     }
-    else {
+    if (!didSomething) {
       throw new Error('invalid argument type ('+(typeof func)+') for first arg');
     }
   }
@@ -386,7 +390,7 @@ Parser.prototype.stop_on_unknown = function() {
 // Parses the commandline. Typically called by Trollop::options.
 Parser.prototype.parse = function(_cmdline) {
   if( typeof _cmdline == 'undefined' ) {
-    var cmdline = process.ARGV;
+    var cmdline = process.argv;
   }
   else {
     var cmdline = _cmdline;
@@ -570,9 +574,10 @@ Parser.prototype.parse = function(_cmdline) {
   return vals;
 };
 
-// Print the help message to +stream+.
-Parser.prototype.educate = function(_stream) {
-  //=$stdout
+Parser.prototype.educate = function(message) {
+  if (message) {
+    sys.error(message);
+  }
   this.width(); // just calculate it now; otherwise we have to be careful not to
                 // call this unless the cursor's at the beginning of a line.
 
@@ -854,9 +859,8 @@ Parser.prototype._each_arg = function(args, callback) {
 
 exports.options = function() {
   var args = Array.prototype.slice.call(arguments);
-  var argv = (args.length > 1) ? args.shift() : process.ARGV;
+  var argv = (args.length > 1) ? args.shift() : process.argv;
   this.p = new Parser(args);
-
   try {
     vals = this.p.parse(argv);
     argv.splice(0,argv.length);
